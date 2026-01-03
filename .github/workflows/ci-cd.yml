@@ -49,12 +49,22 @@ jobs:
           aws-region: ap-southeast-1
 
       # 6. Deploy Lambda code
-      - name: Deploy Lambda (crypto ingestion)
+      - name: Package Lambda with dependencies
         run: |
-          zip -r lambda.zip ingestion
+          rm -rf package lambda.zip
+          mkdir package
+          python -m pip install -r requirements.txt -t package
+          cp -r ingestion package/
+          cd package
+          zip -r ../lambda.zip .
+          cd ..
+
+      - name: Deploy Lambda
+        run: |
           aws lambda update-function-code \
             --function-name crypto-hourly-ingestion \
             --zip-file fileb://lambda.zip
+
 
       # 7. Upload Glue script to S3
       # - name: Upload Glue scripts
