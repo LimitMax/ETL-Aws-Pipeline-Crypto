@@ -33,9 +33,13 @@ jobs:
           pip install pytest
 
       # 4. Run tests
-      - name: Run unit tests
+      - name: Install project
         run: |
-          pytest
+          pip install -e .
+
+      - name: Run tests
+        run: |
+          python -m pytest testing/test_crypto_schema_unit.py -v
 
       # 5. Configure AWS credentials via OIDC
       - name: Configure AWS credentials
