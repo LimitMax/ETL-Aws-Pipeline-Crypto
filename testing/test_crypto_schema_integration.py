@@ -1,10 +1,11 @@
-# tests/test_crypto_ingestion.py
+from ingestion.market.logic import fetch_data_crypto
 
-from ingestion.market.logic import fetch_crypto_data
+def test_crypto_schema_integration():
+    data = fetch_data_crypto("BTC-USD", "1h", "1d")
 
+    assert isinstance(data, list)
+    assert len(data) > 0
 
-def test_crypto_schema():
-    data = fetch_crypto_data("BTC-USD", "1h", "1d")
     sample = data[0]
 
     expected_keys = {
