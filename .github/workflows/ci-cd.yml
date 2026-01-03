@@ -49,15 +49,10 @@ jobs:
           aws-region: ap-southeast-1
 
       # 6. Deploy Lambda code
-      - name: Package Lambda with dependencies
+      - name: Package Lambda code only
         run: |
-          rm -rf package lambda.zip
-          mkdir package
-          python -m pip install -r requirements.txt -t package
-          cp -r ingestion package/
-          cd package
-          zip -r ../lambda.zip .
-          cd ..
+          rm -rf lambda.zip
+          zip -r lambda.zip ingestion
 
       - name: Deploy Lambda
         run: |
