@@ -2,7 +2,9 @@ name: ETL-Aws-Pipeline-Crypto
 
 on:
   push:
-    branches: [ "main" ]
+    branches: 
+      - main
+      - master
 
 permissions:
   id-token: write   # WAJIB untuk OIDC
