@@ -15,6 +15,6 @@ def fetch_all_data():
             )
             all_data.extend(records)
         except Exception as e:
-            print(f"[ERROR] {symbol}: {e}")
+            print(f"[ERROR][fetch_all_data] symbol={symbol} error={str(e)}")
 
     return  deduplicate(all_data) 
