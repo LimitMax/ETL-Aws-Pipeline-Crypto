@@ -3,11 +3,9 @@ import boto3
 from datetime import datetime
 from botocore.exceptions import NoCredentialsError
 
-def write_to_s3(records, bucket, prefix):
+def write_to_s3(records, bucket, prefix, asset_type, source):
     """
-    Write records to S3 Bronze layer.
-    - Uses IAM Role in AWS Lambda
-    - Skips safely in local environment
+    Write raw records to S3 Bronze with partitioned layout.
     """
 
     if not bucket:
@@ -17,8 +15,19 @@ def write_to_s3(records, bucket, prefix):
     try:
         s3 = boto3.client("s3")
 
-        ts = datetime.utcnow().strftime("%Y%m%d%H%M%S")
-        key = f"{prefix}/dt={ts[:8]}/crypto_{ts}.json"
+        now = datetime.utcnow()
+        dt = now.strftime("%Y-%m-%d")
+        hour = now.strftime("%H")
+        ts = now.strftime("%Y%m%d%H%M%S")
+
+        key = (
+            f"{prefix}/"
+            f"asset_type={asset_type}/"
+            f"source={source}/"
+            f"dt={dt}/"
+            f"hour={hour}/"
+            f"crypto_{ts}.json"
+        )
 
         s3.put_object(
             Bucket=bucket,
