@@ -1,17 +1,18 @@
-## How to Run Locally
+# AWS Crypto Data Pipeline
 
-### 1. Create virtual environment
-```bash
-python -m venv .venv
-source .venv/bin/activate  # Linux / Mac
-.venv\Scripts\activate     # Windows
+This project demonstrates an industry-grade data engineering pipeline on AWS
+using a Bronze–Silver–Gold architecture.
 
+## Architecture
+- **AWS Lambda**: Lightweight bronze ingestion
+- **Amazon S3**: Data lake (bronze / silver / gold)
+- **AWS Glue**: Batch ETL for silver & gold layers (planned)
 
-##  2. Instal requirements
-pip install -r requirements.txt
+## Design Principles
+- Lambda is limited to lightweight ingestion only
+- Batch processing and deduplication are handled outside Lambda
+- IAM Role-based security (no credentials in code)
 
-## 3. Run local ingestion pipeline (smoke test)
-python main.py
-
-## 4. Run automated tests
-pytest -v
+## Current Status
+- ✅ Bronze ingestion Lambda implemented
+- ⏳ Silver & Gold layers in progress

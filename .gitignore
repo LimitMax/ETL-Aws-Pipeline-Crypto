@@ -22,13 +22,9 @@ Thumbs.db
 .coverage
 htmlcov/
 
-# =========================
-# Logs
-# =========================
-*.log
+# AWS / Secrets
+.aws/
+.env
 
-# =========================
-# Temporary / Runtime
-# =========================
-tmp/
-temp/
+# Build artifacts
+lambda.zip

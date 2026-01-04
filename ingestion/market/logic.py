@@ -3,6 +3,10 @@ import yfinance as yf
 from ingestion.market.config import SOURCE, ASSET_TYPE
 
 def fetch_data_crypto(symbol: str, interval: str, period: str):
+    """
+    Fetch RAW OHLCV data from yfinance.
+    Intended for bronze ingestion.
+    """
     ticker = yf.Ticker(symbol)
     df = ticker.history(interval=interval, period=period)
 

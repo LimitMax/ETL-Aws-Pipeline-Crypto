@@ -4,6 +4,13 @@ from ingestion.market.config import CRYPTO_SYMBOLS,INTERVAL,PERIOD
 
 
 def fetch_all_data():
+    """
+    Batch ingestion logic.
+    NOT intended to be executed inside AWS Lambda.
+    Used for:
+    - local run
+    - future Glue job
+    """
     all_data = []
 
     for symbol in CRYPTO_SYMBOLS:
