@@ -1,7 +1,6 @@
 from silver.reader import read_bronze_objects
 from silver.writer import write_silver
 from silver.config import BRONZE_BUCKET, SILVER_BUCKET, BRONZE_PREFIX, SILVER_PREFIX
-
 from silver.transformer import bronze_to_silver
 from ingestion.market.dedup import deduplicate
 
