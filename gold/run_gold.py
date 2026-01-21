@@ -2,6 +2,7 @@ from gold.reader import read_silver
 from gold.aggregator import aggregate_daily
 from gold.writer import write_gold
 from gold.quality import validate_gold
+from gold.metrics import emit_gold_row_count
 from gold.config import SILVER_BUCKET,GOLD_BUCKET,SILVER_PREFIX,GOLD_PREFIX
 
 EXPECTED_SYMBOLS = 5  # BTC, ETH, BNB, SOL, ADA
@@ -20,6 +21,10 @@ def main(dt=None):
     validate_gold(gold_df, expected_symbols=EXPECTED_SYMBOLS)
     print("[INFO] Gold data quality checks passed")
 
+    for dt, group in gold_df.groupby("dt"):
+        emit_gold_row_count(dt, len(group))
+        print(f"[METRIC] GoldRowCount dt={dt} value={len(group)}")
+        
     write_gold(gold_df, GOLD_BUCKET, GOLD_PREFIX)
     print("[SUCCESS] Gold layer written")
 
