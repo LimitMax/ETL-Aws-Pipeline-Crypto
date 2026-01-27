@@ -67,6 +67,6 @@ jobs:
       # 7. Deploy Glue Bronze Backdate Job
       - name: Deploy Glue Bronze Backdate Job
         run: |
-          aws s3 sync glue/jobs/bronze_backdate \
+          aws s3 sync glue/scripts/backdate \
             s3://crypto-data-lake-limitmax/glue/scripts/backdate \
             --delete
