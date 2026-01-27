@@ -1,35 +1,87 @@
+import os
+from datetime import datetime, timezone
+
 from silver.reader import read_bronze_objects
-from silver.writer import write_silver
-from silver.config import BRONZE_BUCKET,SILVER_BUCKET,BRONZE_PREFIX,SILVER_PREFIX
 from silver.transformer import bronze_to_silver
+from silver.writer import write_silver
 from silver.quality import validate_silver
-from ingestion.market.dedup import deduplicate
+from silver.config import (
+    BRONZE_BUCKET,
+    SILVER_BUCKET,
+    BRONZE_PREFIX,
+    SILVER_PREFIX,
+)
+
+
+def _get_runtime_window():
+    """
+    Determine dt/hour window for Silver job.
+
+    Priority:
+    1. Explicit ENV (DT, HOUR) -> rerun / backfill
+    2. Current UTC hour -> scheduled 2-hour run
+    """
+
+    dt = os.environ.get("DT")
+    hour = os.environ.get("HOUR")
+
+    if dt and hour:
+        return dt, hour
+
+    now = datetime.now(timezone.utc)
+    return now.strftime("%Y-%m-%d"), now.strftime("%H")
 
 
 def main():
-    print("[INFO] Reading Bronze data...")
-    bronze_records = read_bronze_objects(BRONZE_BUCKET, BRONZE_PREFIX)
-    print(f"[INFO] Bronze records: {len(bronze_records)}")
+    if not BRONZE_BUCKET or not SILVER_BUCKET:
+        raise RuntimeError("BRONZE_BUCKET and SILVER_BUCKET must be set")
 
-    print("[INFO] Transforming Bronze → Silver (OHLCV)...")
-    silver_raw = bronze_to_silver(bronze_records)
-    print(f"[INFO] Silver raw records: {len(silver_raw)}")
+    dt, hour = _get_runtime_window()
 
-    print("[INFO] Deduplicating Silver data...")
-    silver_records = deduplicate(silver_raw)
-    print(f"[INFO] Silver records after dedup: {len(silver_records)}")
+    print(f"[INFO] Silver job started dt={dt} hour={hour}")
 
-    print("[INFO] Running Silver data quality checks...")
+    # ----------------------
+    # Read Bronze (scoped)
+    # ----------------------
+    bronze_records = read_bronze_objects(
+        bucket=BRONZE_BUCKET,
+        base_prefix=BRONZE_PREFIX.split("/asset_type=")[0],
+        dt=dt,
+        hour=hour,
+    )
+
+    if not bronze_records:
+        print(
+            f"[WARN] No Bronze records found for dt={dt} hour={hour}. "
+            f"Skipping Silver write."
+        )
+        return
+
+    print(f"[INFO] Bronze records loaded: {len(bronze_records)}")
+
+    # ----------------------
+    # Transform → Silver
+    # ----------------------
+    silver_records = bronze_to_silver(bronze_records)
+
+    # ----------------------
+    # Quality Gate
+    # ----------------------
     validate_silver(silver_records)
-    print("[INFO] Silver data quality checks passed")
 
+    # ----------------------
+    # Write Silver
+    # ----------------------
     write_silver(
         records=silver_records,
         bucket=SILVER_BUCKET,
         prefix=SILVER_PREFIX,
     )
 
-    print("[SUCCESS] Silver layer written")
+    print(
+        f"[SUCCESS] Silver job completed "
+        f"dt={dt} hour={hour} rows={len(silver_records)}"
+    )
 
 
 if __name__ == "__main__":
