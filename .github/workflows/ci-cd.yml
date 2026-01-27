@@ -69,3 +69,15 @@ jobs:
           aws s3 sync glue/scripts/ \
             s3://crypto-data-lake-limitmax/glue/scripts/backdate \
             --delete
+
+      # 8. Build ingestion.zip for Glue Python Shell
+      - name: Build ingestion.zip
+        run: |
+          rm -f ingestion.zip
+          zip -r ingestion.zip ingestion
+
+      # 9. Upload ingestion.zip to S3 (Glue dependencies)
+      - name: Upload ingestion.zip to S3
+        run: |
+          aws s3 cp ingestion.zip \
+            s3://crypto-data-lake-limitmax/glue/libs/ingestion.zip
