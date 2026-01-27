@@ -64,7 +64,9 @@ jobs:
             --zip-file fileb://lambda.zip
 
 
-      # 7. Upload Glue script to S3
-      # - name: Upload Glue scripts
-      #   run: |
-      #     aws s3 cp glue/ s3://crypto-data-lake-limitmax/glue/ --recursive
+      # 7. Deploy Glue Bronze Backdate Job
+      - name: Deploy Glue Bronze Backdate Job
+        run: |
+          aws s3 sync glue/jobs/bronze_backdate \
+            s3://crypto-data-lake-limitmax/glue/scripts/backdate \
+            --delete
