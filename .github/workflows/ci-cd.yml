@@ -63,7 +63,6 @@ jobs:
             --function-name crypto-hourly-ingestion \
             --zip-file fileb://lambda.zip
 
-
       # 7. Deploy Glue Bronze Backdate Job
       - name: Deploy Glue Bronze Backdate Job
         run: |
