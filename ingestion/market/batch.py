@@ -1,27 +1,39 @@
 from ingestion.market.logic import fetch_data_crypto
-from ingestion.market.dedup import deduplicate
-from ingestion.market.config import CRYPTO_SYMBOLS,INTERVAL,PERIOD
+from ingestion.market.config import CRYPTO_SYMBOLS, INTERVAL, PERIOD
 
 
-def fetch_all_data():
+def fetch_all_data() -> list[dict]:
     """
-    Batch ingestion logic.
-    NOT intended to be executed inside AWS Lambda.
-    Used for:
-    - local run
-    - future Glue job
+    Batch Bronze ingestion orchestrator.
+
+    Responsibilities:
+    - Iterate configured crypto symbols
+    - Fetch Bronze-compatible records from yfinance
+    - NO deduplication
+    - NO transformation
+    - Safe for backfill / replay
+
+    Intended usage:
+    - Local execution
+    - Glue batch job
     """
-    all_data = []
+
+    all_records: list[dict] = []
 
     for symbol in CRYPTO_SYMBOLS:
         try:
             records = fetch_data_crypto(
                 symbol=symbol,
                 interval=INTERVAL,
-                period=PERIOD
+                period=PERIOD,
             )
-            all_data.extend(records)
-        except Exception as e:
-            print(f"[ERROR][fetch_all_data] symbol={symbol} error={str(e)}")
+            all_records.extend(records)
 
-    return  deduplicate(all_data) 
+        except Exception as exc:
+            # Fail-soft: continue other symbols
+            print(
+                f"[ERROR][batch.fetch_all_data] "
+                f"symbol={symbol} error={exc}"
+            )
+
+    return all_records

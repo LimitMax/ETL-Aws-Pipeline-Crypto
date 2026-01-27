@@ -1,104 +1,64 @@
-import argparse
+from datetime import datetime, timedelta
+import os
 import json
 import boto3
-import yfinance as yf
-from datetime import datetime, timedelta
-import pandas as pd
 
-# ======================
-# Argument Parser
-# ======================
-parser = argparse.ArgumentParser()
-parser.add_argument("--BRONZE_BUCKET", required=True)
-parser.add_argument("--BRONZE_PREFIX", default="bronze/crypto")
-parser.add_argument("--START_DATE", required=True)
-parser.add_argument("--END_DATE", default=None)
+from ingestion.market.logic import fetch_data_crypto
+from ingestion.market.config import CRYPTO_SYMBOLS, ASSET_TYPE, SOURCE
 
-args, _ = parser.parse_known_args()
+def main():
+    BRONZE_BUCKET = os.environ.get("BRONZE_BUCKET")
+    BRONZE_PREFIX = os.environ.get("BRONZE_PREFIX", "bronze/crypto")
+    START_DATE = os.environ.get("START_DATE")
+    END_DATE = os.environ.get("END_DATE")
 
-BRONZE_BUCKET = args.BRONZE_BUCKET
-BRONZE_PREFIX = args.BRONZE_PREFIX
-START_DATE = args.START_DATE
-END_DATE = args.END_DATE or datetime.utcnow().strftime("%Y-%m-%d")
+    if not BRONZE_BUCKET or not START_DATE or not END_DATE:
+        raise RuntimeError("BRONZE_BUCKET, START_DATE, END_DATE are required")
 
-# ======================
-# Config
-# ======================
-SYMBOLS = [
-    "BTC-USD",
-    "ETH-USD",
-    "BNB-USD",
-    "SOL-USD",
-    "ADA-USD",
-]
+    s3 = boto3.client("s3")
 
-ASSET_TYPE = "crypto"
-SOURCE = "yfinance"
+    start_dt = datetime.fromisoformat(START_DATE)
+    end_dt = datetime.fromisoformat(END_DATE)
 
-s3 = boto3.client("s3")
+    print(f"[INFO] Bronze backdate {START_DATE} → {END_DATE}")
 
-print(f"[INFO] Backfill range: {START_DATE} → {END_DATE}")
-print(f"[INFO] Bronze bucket: {BRONZE_BUCKET}")
-print(f"[INFO] Bronze prefix: {BRONZE_PREFIX}")
+    current = start_dt
+    while current <= end_dt:
+        dt_str = current.strftime("%Y-%m-%d")
+        print(f"[INFO] Processing dt={dt_str}")
 
-# ======================
-# Main Logic
-# ======================
-start_dt = datetime.strptime(START_DATE, "%Y-%m-%d")
-end_dt = datetime.strptime(END_DATE, "%Y-%m-%d")
+        all_records = []
 
-for symbol in SYMBOLS:
-    print(f"\n[INFO] Processing symbol: {symbol}")
+        for symbol in CRYPTO_SYMBOLS:
+            try:
+                records = fetch_data_crypto(symbol, "1h", "1d")
+                daily = [r for r in records if r["datex"] == dt_str]
+                all_records.extend(daily)
+                print(f"[OK] {symbol} rows={len(daily)}")
+            except Exception as e:
+                print(f"[ERROR] {symbol}: {e}")
 
-    try:
-        df = yf.download(
-            symbol,
-            start=START_DATE,
-            end=(end_dt + timedelta(days=1)).strftime("%Y-%m-%d"),
-            interval="1h",
-            progress=False
-        )
-
-        if df.empty:
-            print(f"[WARN] No data for {symbol}")
-            continue
-
-        df.reset_index(inplace=True)
-        df["dt"] = df["Datetime"].dt.strftime("%Y-%m-%d")
-
-        for dt, group in df.groupby("dt"):
-            records = []
-            for _, row in group.iterrows():
-                records.append({
-                "symbol": symbol,
-                "asset_type": ASSET_TYPE,
-                "source": SOURCE,
-                "datetime": str(row["Datetime"]),
-                "open": float(row["Open"]),
-                "high": float(row["High"]),
-                "low": float(row["Low"]),
-                "close": float(row["Close"]),
-                "volume": float(row["Volume"]),
-            })
-
-            s3_key = (
+        if all_records:
+            key = (
                 f"{BRONZE_PREFIX}/"
                 f"asset_type={ASSET_TYPE}/"
                 f"source={SOURCE}/"
-                f"dt={dt}/"
-                f"{symbol.replace('-', '_')}_{dt}.json"
+                f"dt={dt_str}/"
+                f"backfill_{dt_str}.json"
             )
 
             s3.put_object(
                 Bucket=BRONZE_BUCKET,
-                Key=s3_key,
-                Body=json.dumps(records),
-                ContentType="application/json"
+                Key=key,
+                Body=json.dumps(all_records),
+                ContentType="application/json",
             )
 
-            print(f"[SUCCESS] Wrote {symbol} dt={dt} ({len(records)} rows)")
+            print(f"[INFO] Wrote s3://{BRONZE_BUCKET}/{key}")
 
-    except Exception as e:
-        print(f"[ERROR] Failed symbol {symbol}: {e}")
+        current += timedelta(days=1)
 
-print("\n[DONE] Bronze backfill completed")
+    print("[SUCCESS] Bronze backdate completed")
+
+if __name__ == "__main__":
+    main()
